@@ -2,7 +2,7 @@
 
 ![go-commons workflow](https://github.com/dynastywind/go-commons/actions/workflows/go.yml/badge.svg)
 
-This is a repository of commonly used utility functions of GOLANG, aming to facilitate gopher's daily work.
+This is a repository of commonly used utility functions of GOLANG, aiming to facilitate gopher's daily work.
 
 ## Import
 
