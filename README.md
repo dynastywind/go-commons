@@ -14,6 +14,28 @@ go get github.com/dynastywind/go-commons
 
 This repository is composed of different utility function modules. You can pick any one of them to use at your own service.
 
+### Either
+
+This module provides an Either type containing either one type or another.
+
+#### Usage
+
+```go
+either.OfLeft(1).HashLeft()
+either.OfRight(1).HasRight()
+```
+
+### Optional
+
+This module provides an Optional utility function to avoid nil return type in GOLANG.
+
+#### Usage
+
+```go
+optional.Of(1).IsPresent()
+optional.OfEmpty().IsPresent()
+```
+
 ### Structs
 
 This module helps one to convert a struct to a **string-interface map** or vice verser.
