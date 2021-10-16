@@ -14,6 +14,19 @@ go get github.com/dynastywind/go-commons
 
 This repository is composed of different utility function modules. You can pick any one of them to use at your own service.
 
+### Pipeline
+
+This module contains a powerful tool to execute a series of jobs either sequentially or concurrently.
+
+#### Usage
+
+```go
+pipeline.NewSequentialJob("sum", 0, jobs, sumAggregator, pipeline.DefaultJobConfig().WithAllowError(false),pipeline.NewDefaultErrorHandler(), pipeline.NewDefaultSummary()).Do(context.Background())
+
+pipeline.NewConcurrentJob("sum", 0, jobs, sumAggregator, pipeline.DefaultJobConfig().WithAllowError(false),pipeline.NewDefaultErrorHandler(), pipeline.NewDefaultSummary()).Do(context.Background())
+```
+By default, a job execution summary will be given once your job is finished, whatever its result.
+
 ### Either
 
 This module provides an Either type containing either one type or another.
