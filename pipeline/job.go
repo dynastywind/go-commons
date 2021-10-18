@@ -18,3 +18,14 @@ type Job interface {
 // @return The first value is the job result to be returned, which should be the same type as prior.
 // @return The second value is a potential error
 type Aggregator func(ctx context.Context, prior, current interface{}) (interface{}, error)
+
+// Doable is a sysnonym to Job interface's Do function, which helps to construc jobs in a funcational way
+type Doable func(ctx context.Context) JobResult
+
+type DoableJob struct {
+	doable Doable
+}
+
+func (job DoableJob) Do(ctx context.Context) JobResult {
+	return job.doable(ctx)
+}

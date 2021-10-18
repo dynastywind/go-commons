@@ -85,9 +85,30 @@ var _ = ginkgo.Describe("Concurrent job tests", func() {
 						value: 4,
 					},
 				}
-				r := pipeline.NewConcurrentJob("sum", 0, jobs, sumAggregator, pipeline.DefaultJobConfig().WithAllowError(false),
-					pipeline.NewDefaultErrorHandler(), pipeline.NewDefaultSummary()).Do(context.Background())
+				r := pipeline.NewConcurrentJob("sum", 0, jobs, sumAggregator, pipeline.NewDefaultJobConfig().WithAllowError(false),
+					pipeline.NewDefaultErrorHandler(), pipeline.NewDefaultDigester()).Do(context.Background())
 				gomega.Expect(r.Success).To(gomega.BeFalse())
+			})
+		})
+		ginkgo.When("Executing a concurrent doable job", func() {
+			ginkgo.It("Should return correct sum value", func() {
+				doables := []pipeline.Doable{
+					func(ctx context.Context) pipeline.JobResult {
+						return pipeline.SuccessResultWithData(1)
+					},
+					func(ctx context.Context) pipeline.JobResult {
+						return pipeline.SuccessResultWithData(2)
+					},
+					func(ctx context.Context) pipeline.JobResult {
+						return pipeline.SuccessResultWithData(3)
+					},
+					func(ctx context.Context) pipeline.JobResult {
+						return pipeline.SuccessResultWithData(4)
+					},
+				}
+				r := pipeline.NewDefaultConcurrentJobWithDoable("sum", 0, doables, sumAggregator).Do(context.Background())
+				gomega.Expect(r.Success).To(gomega.BeTrue())
+				gomega.Expect(r.Data).To(gomega.Equal(10))
 			})
 		})
 	})

@@ -16,14 +16,16 @@ type ConcurrentJob struct {
 	config       JobConfig
 	aggregator   Aggregator
 	errorHandler ErrorHandler
-	summary      Summary
+	digester     Digester
 }
 
 func (concurrent ConcurrentJob) Do(ctx context.Context) JobResult {
+	jobCount := len(concurrent.jobs)
+	concurrent.digester.whenJobStarts(concurrent.id, concurrent.name, jobCount, concurrent.config)
 	start := time.Now()
 	r := concurrent.do(ctx)
 	elapsed := time.Since(start).Milliseconds()
-	concurrent.summary.summary(concurrent.id, concurrent.name, len(concurrent.jobs), concurrent.config, elapsed)
+	concurrent.digester.whenJobEnds(concurrent.id, concurrent.name, jobCount, concurrent.config, elapsed)
 	return r
 }
 
@@ -32,14 +34,18 @@ func (concurrent ConcurrentJob) do(ctx context.Context) JobResult {
 	ch := make(chan JobResult, concurrent.config.maxConcurrency)
 	length := len(concurrent.jobs)
 	for index, job := range concurrent.jobs {
-		go func(c context.Context, j Job) {
+		go func(c context.Context, i int, j Job) {
+			begin := time.Now()
 			defer func() {
+				passed := time.Since(begin).Microseconds()
+				concurrent.digester.whenChildJobEnds(concurrent.id, concurrent.name, i, concurrent.config, passed)
 				if re := recover(); re != nil {
 					ch <- FailureResult(fmt.Errorf("concurrent job %v unexpected error: %v", concurrent.id, re), "Unexpected failure")
 				}
 			}()
+			concurrent.digester.whenChildJobStarts(concurrent.id, concurrent.name, i, concurrent.config)
 			ch <- j.Do(c)
-		}(ctx, job)
+		}(ctx, index, job)
 		if (index+1)%concurrent.config.maxConcurrency == 0 || index+1 == length {
 			for i := 0; i <= index%concurrent.config.maxConcurrency; i++ {
 				r := <-ch
@@ -66,11 +72,11 @@ func (concurrent ConcurrentJob) do(ctx context.Context) JobResult {
 }
 
 func NewDefaultConcurrentJob(name string, defaultValue interface{}, jobs []Job, aggregator Aggregator) ConcurrentJob {
-	return NewConcurrentJob(name, defaultValue, jobs, aggregator, DefaultJobConfig(), NewDefaultErrorHandler(), NewDefaultSummary())
+	return NewConcurrentJob(name, defaultValue, jobs, aggregator, NewDefaultJobConfig(), NewDefaultErrorHandler(), NewDefaultDigester())
 }
 
 func NewConcurrentJob(name string, defaultValue interface{}, jobs []Job, aggregator Aggregator, config JobConfig,
-	errorHandler ErrorHandler, summary Summary) ConcurrentJob {
+	errorHandler ErrorHandler, digester Digester) ConcurrentJob {
 	return ConcurrentJob{
 		id:           uuid.New().String(),
 		name:         name,
@@ -79,6 +85,21 @@ func NewConcurrentJob(name string, defaultValue interface{}, jobs []Job, aggrega
 		config:       config,
 		aggregator:   aggregator,
 		errorHandler: errorHandler,
-		summary:      summary,
+		digester:     digester,
 	}
+}
+
+func NewDefaultConcurrentJobWithDoable(name string, defaultValue interface{}, doables []Doable, aggregator Aggregator) ConcurrentJob {
+	return NewConcurrentJobWithDoable(name, defaultValue, doables, aggregator, NewDefaultJobConfig(), NewDefaultErrorHandler(), NewDefaultDigester())
+}
+
+func NewConcurrentJobWithDoable(name string, defaultValue interface{}, doables []Doable, aggregator Aggregator, config JobConfig,
+	errorHandler ErrorHandler, digester Digester) ConcurrentJob {
+	var jobs []Job
+	for _, doable := range doables {
+		jobs = append(jobs, DoableJob{
+			doable: doable,
+		})
+	}
+	return NewConcurrentJob(name, defaultValue, jobs, aggregator, config, errorHandler, digester)
 }

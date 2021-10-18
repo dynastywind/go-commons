@@ -16,14 +16,16 @@ type SequentialJob struct {
 	defaultValue interface{}
 	aggregator   Aggregator
 	errorHandler ErrorHandler
-	summary      Summary
+	digester     Digester
 }
 
 func (sequential SequentialJob) Do(ctx context.Context) JobResult {
+	jobCount := len(sequential.jobs)
+	sequential.digester.whenJobStarts(sequential.id, sequential.name, jobCount, sequential.config)
 	start := time.Now()
 	r := sequential.do(ctx)
 	elapsed := time.Since(start).Milliseconds()
-	sequential.summary.summary(sequential.id, sequential.name, len(sequential.jobs), sequential.config, elapsed)
+	sequential.digester.whenJobEnds(sequential.id, sequential.name, jobCount, sequential.config, elapsed)
 	return r
 }
 
@@ -68,11 +70,11 @@ func (sequential SequentialJob) do(ctx context.Context) JobResult {
 }
 
 func NewDefaultSequentialJob(name string, defaultValue interface{}, jobs []Job, aggregator Aggregator) SequentialJob {
-	return NewSequentialJob(name, defaultValue, jobs, aggregator, DefaultJobConfig(), NewDefaultErrorHandler(), NewDefaultSummary())
+	return NewSequentialJob(name, defaultValue, jobs, aggregator, NewDefaultJobConfig(), NewDefaultErrorHandler(), NewDefaultDigester())
 }
 
 func NewSequentialJob(name string, defaultValue interface{}, jobs []Job, aggregator Aggregator, config JobConfig,
-	errorHandler ErrorHandler, summary Summary) SequentialJob {
+	errorHandler ErrorHandler, digester Digester) SequentialJob {
 	return SequentialJob{
 		id:           uuid.New().String(),
 		name:         name,
@@ -81,6 +83,21 @@ func NewSequentialJob(name string, defaultValue interface{}, jobs []Job, aggrega
 		defaultValue: defaultValue,
 		aggregator:   aggregator,
 		errorHandler: errorHandler,
-		summary:      summary,
+		digester:     digester,
 	}
+}
+
+func NewDefaultSequentialJobWithDoable(name string, defaultValue interface{}, doables []Doable, aggregator Aggregator) SequentialJob {
+	return NewSequentialJobWithDoable(name, defaultValue, doables, aggregator, NewDefaultJobConfig(), NewDefaultErrorHandler(), NewDefaultDigester())
+}
+
+func NewSequentialJobWithDoable(name string, defaultValue interface{}, doables []Doable, aggregator Aggregator, config JobConfig,
+	errorHandler ErrorHandler, digester Digester) SequentialJob {
+	var jobs []Job
+	for _, doable := range doables {
+		jobs = append(jobs, DoableJob{
+			doable: doable,
+		})
+	}
+	return NewSequentialJob(name, defaultValue, jobs, aggregator, config, errorHandler, digester)
 }

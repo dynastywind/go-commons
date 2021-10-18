@@ -9,7 +9,7 @@ const (
 type JobConfig struct {
 	allowError     bool
 	logError       bool
-	summary        bool
+	digest         bool
 	maxConcurrency int
 }
 
@@ -30,21 +30,21 @@ func (config JobConfig) WithMaxConcurrency(maxConcurrency int) JobConfig {
 	return config
 }
 
-func (config JobConfig) WithSummary(summary bool) JobConfig {
-	config.summary = summary
+func (config JobConfig) WithDigest(digest bool) JobConfig {
+	config.digest = digest
 	return config
 }
 
 func (config JobConfig) String() string {
-	return fmt.Sprintf("AllowError: %v\nLogError: %v\nSummary: %v\nMaxConcurrency: %v\n",
-		config.allowError, config.logError, config.summary, config.maxConcurrency)
+	return fmt.Sprintf("AllowError: %v\nLogError: %v\nDigest: %v\nMaxConcurrency: %v\n",
+		config.allowError, config.logError, config.digest, config.maxConcurrency)
 }
 
-func DefaultJobConfig() JobConfig {
+func NewDefaultJobConfig() JobConfig {
 	return JobConfig{
 		allowError:     true,
 		logError:       true,
-		summary:        true,
+		digest:         true,
 		maxConcurrency: DefaultMaxConcurrency,
 	}
 }

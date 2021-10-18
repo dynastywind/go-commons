@@ -21,11 +21,33 @@ This module contains a powerful tool to execute a series of jobs either sequenti
 #### Usage
 
 ```go
-pipeline.NewSequentialJob("sum", 0, jobs, sumAggregator, pipeline.DefaultJobConfig().WithAllowError(false),pipeline.NewDefaultErrorHandler(), pipeline.NewDefaultSummary()).Do(context.Background())
+pipeline.NewSequentialJob("sum", 0, jobs, sumAggregator, pipeline.DefaultJobConfig().WithAllowError(false),pipeline.NewDefaultErrorHandler(), pipeline.NewDefaultDigester()).Do(context.Background())
 
-pipeline.NewConcurrentJob("sum", 0, jobs, sumAggregator, pipeline.DefaultJobConfig().WithAllowError(false),pipeline.NewDefaultErrorHandler(), pipeline.NewDefaultSummary()).Do(context.Background())
+pipeline.NewConcurrentJob("sum", 0, jobs, sumAggregator, pipeline.DefaultJobConfig().WithAllowError(false),pipeline.NewDefaultErrorHandler(), pipeline.NewDefaultDigester()).Do(context.Background())
 ```
-By default, a job execution summary will be given once your job is finished, whatever its result.
+
+If you don't want to create an extra job struct, you can also opt to pass a Doable function alternatively. See below example.
+
+```go
+doables := []pipeline.Doable{
+    func(ctx context.Context) pipeline.JobResult {
+        return pipeline.SuccessResultWithData(1)
+    },
+    func(ctx context.Context) pipeline.JobResult {
+        return pipeline.SuccessResultWithData(2)
+    },
+    func(ctx context.Context) pipeline.JobResult {
+        return pipeline.SuccessResultWithData(3)
+    },
+    func(ctx context.Context) pipeline.JobResult {
+        return pipeline.SuccessResultWithData(4)
+    },
+}
+pipeline.NewDefaultSequentialJobWithDoable("sum", 0, doables, sumAggregator).Do(context.Background())
+pipeline.NewDefaultConcurrentJobWithDoable("sum", 0, doables, sumAggregator).Do(context.Background())
+```
+
+By default, a job execution digest will be given during its execution process.
 
 ### Either
 
