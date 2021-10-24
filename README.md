@@ -21,9 +21,9 @@ This module contains a powerful tool to execute a series of jobs either sequenti
 #### Usage
 
 ```go
-pipeline.NewSequentialJob("sum", 0, jobs, sumAggregator, pipeline.DefaultJobConfig().WithAllowError(false),pipeline.NewDefaultErrorHandler(), pipeline.NewDefaultDigester()).Do(context.Background())
+pipeline.NewSequentialJob("sum", 0, jobs, sumAggregator, pipeline.DefaultEarlyStopper, pipeline.DefaultJobConfig().WithAllowError(false),pipeline.NewDefaultErrorHandler(), pipeline.NewDefaultDigester()).Do(context.Background())
 
-pipeline.NewConcurrentJob("sum", 0, jobs, sumAggregator, pipeline.DefaultJobConfig().WithAllowError(false),pipeline.NewDefaultErrorHandler(), pipeline.NewDefaultDigester()).Do(context.Background())
+pipeline.NewConcurrentJob("sum", 0, jobs, sumAggregator, pipeline.DefaultEarlyStopper, pipeline.DefaultJobConfig().WithAllowError(false),pipeline.NewDefaultErrorHandler(), pipeline.NewDefaultDigester()).Do(context.Background())
 ```
 
 If you don't want to create an extra job struct, you can also opt to pass a Doable function alternatively. See below example.

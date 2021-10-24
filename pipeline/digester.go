@@ -41,6 +41,13 @@ type Digester interface {
 	// @param config Job config
 	// @param elapsed Time elapsed during job execution
 	whenChildJobEnds(id, name string, index int, config JobConfig, elapsed int64)
+
+	// whenEarlyStopped execute when a job is early stopped
+	//
+	// @param id Job ID
+	// @param name Job name
+	// @param config Job config
+	whenEarlyStopped(id, name string, config JobConfig)
 }
 
 type DefaultDigester struct {
@@ -75,6 +82,13 @@ func (digester DefaultDigester) whenChildJobEnds(id, name string, index int, con
 		logrus.WithField("id", id).WithField("name", name).WithField("index", index).
 			WithField("config", config.String()).WithField("elapsed", elapsed).
 			Info(fmt.Sprintf("Child job %v of %v ends, time elapsed: %vms", index, id, elapsed))
+	}
+}
+
+func (digester DefaultDigester) whenEarlyStopped(id, name string, config JobConfig) {
+	if config.digest {
+		logrus.WithField("id", id).WithField("name", name).
+			WithField("config", config).Info(fmt.Sprintf("Job %v is early stopped", id))
 	}
 }
 

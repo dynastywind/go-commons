@@ -8,6 +8,8 @@ import (
 	"github.com/google/uuid"
 )
 
+// ConcurrentJob executes child jobs concurrently
+// It early stopps when a certain criteria is met and returns the aggregated result up to that time
 type ConcurrentJob struct {
 	id           string
 	name         string
@@ -15,6 +17,7 @@ type ConcurrentJob struct {
 	jobs         []Job
 	config       JobConfig
 	aggregator   Aggregator
+	earlyStopper EarlyStopper
 	errorHandler ErrorHandler
 	digester     Digester
 }
@@ -58,6 +61,10 @@ func (concurrent ConcurrentJob) do(ctx context.Context) JobResult {
 						}
 					} else {
 						data = d
+						if concurrent.earlyStopper(ctx, r.Data, data) {
+							concurrent.digester.whenEarlyStopped(concurrent.id, concurrent.name, concurrent.config)
+							return SuccessResultWithData(data)
+						}
 					}
 				} else {
 					if terminate := concurrent.errorHandler.handleError(concurrent.config, concurrent.name, concurrent.id,
@@ -72,10 +79,10 @@ func (concurrent ConcurrentJob) do(ctx context.Context) JobResult {
 }
 
 func NewDefaultConcurrentJob(name string, defaultValue interface{}, jobs []Job, aggregator Aggregator) ConcurrentJob {
-	return NewConcurrentJob(name, defaultValue, jobs, aggregator, NewDefaultJobConfig(), NewDefaultErrorHandler(), NewDefaultDigester())
+	return NewConcurrentJob(name, defaultValue, jobs, aggregator, DefaultEarlyStopper, NewDefaultJobConfig(), NewDefaultErrorHandler(), NewDefaultDigester())
 }
 
-func NewConcurrentJob(name string, defaultValue interface{}, jobs []Job, aggregator Aggregator, config JobConfig,
+func NewConcurrentJob(name string, defaultValue interface{}, jobs []Job, aggregator Aggregator, earlyStopper EarlyStopper, config JobConfig,
 	errorHandler ErrorHandler, digester Digester) ConcurrentJob {
 	return ConcurrentJob{
 		id:           uuid.New().String(),
@@ -84,16 +91,17 @@ func NewConcurrentJob(name string, defaultValue interface{}, jobs []Job, aggrega
 		jobs:         jobs,
 		config:       config,
 		aggregator:   aggregator,
+		earlyStopper: earlyStopper,
 		errorHandler: errorHandler,
 		digester:     digester,
 	}
 }
 
 func NewDefaultConcurrentJobWithDoable(name string, defaultValue interface{}, doables []Doable, aggregator Aggregator) ConcurrentJob {
-	return NewConcurrentJobWithDoable(name, defaultValue, doables, aggregator, NewDefaultJobConfig(), NewDefaultErrorHandler(), NewDefaultDigester())
+	return NewConcurrentJobWithDoable(name, defaultValue, doables, aggregator, DefaultEarlyStopper, NewDefaultJobConfig(), NewDefaultErrorHandler(), NewDefaultDigester())
 }
 
-func NewConcurrentJobWithDoable(name string, defaultValue interface{}, doables []Doable, aggregator Aggregator, config JobConfig,
+func NewConcurrentJobWithDoable(name string, defaultValue interface{}, doables []Doable, aggregator Aggregator, earlyStopper EarlyStopper, config JobConfig,
 	errorHandler ErrorHandler, digester Digester) ConcurrentJob {
 	var jobs []Job
 	for _, doable := range doables {
@@ -101,5 +109,5 @@ func NewConcurrentJobWithDoable(name string, defaultValue interface{}, doables [
 			doable: doable,
 		})
 	}
-	return NewConcurrentJob(name, defaultValue, jobs, aggregator, config, errorHandler, digester)
+	return NewConcurrentJob(name, defaultValue, jobs, aggregator, earlyStopper, config, errorHandler, digester)
 }

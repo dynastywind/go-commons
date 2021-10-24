@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 )
 
+// SequentialJob executes child jobs sequentially
 type SequentialJob struct {
 	id           string
 	name         string
@@ -15,6 +16,7 @@ type SequentialJob struct {
 	config       JobConfig
 	defaultValue interface{}
 	aggregator   Aggregator
+	earlyStopper EarlyStopper
 	errorHandler ErrorHandler
 	digester     Digester
 }
@@ -55,6 +57,11 @@ func (sequential SequentialJob) do(ctx context.Context) JobResult {
 					}
 				} else {
 					data = d
+					if sequential.earlyStopper(ctx, r.Data, data) {
+						sequential.digester.whenEarlyStopped(sequential.id, sequential.name, sequential.config)
+						ch <- SuccessResultWithData(data)
+						return
+					}
 				}
 			} else {
 				if terminate := sequential.errorHandler.handleError(sequential.config, sequential.name, sequential.id,
@@ -70,10 +77,10 @@ func (sequential SequentialJob) do(ctx context.Context) JobResult {
 }
 
 func NewDefaultSequentialJob(name string, defaultValue interface{}, jobs []Job, aggregator Aggregator) SequentialJob {
-	return NewSequentialJob(name, defaultValue, jobs, aggregator, NewDefaultJobConfig(), NewDefaultErrorHandler(), NewDefaultDigester())
+	return NewSequentialJob(name, defaultValue, jobs, aggregator, DefaultEarlyStopper, NewDefaultJobConfig(), NewDefaultErrorHandler(), NewDefaultDigester())
 }
 
-func NewSequentialJob(name string, defaultValue interface{}, jobs []Job, aggregator Aggregator, config JobConfig,
+func NewSequentialJob(name string, defaultValue interface{}, jobs []Job, aggregator Aggregator, earlyStopper EarlyStopper, config JobConfig,
 	errorHandler ErrorHandler, digester Digester) SequentialJob {
 	return SequentialJob{
 		id:           uuid.New().String(),
@@ -82,16 +89,17 @@ func NewSequentialJob(name string, defaultValue interface{}, jobs []Job, aggrega
 		config:       config,
 		defaultValue: defaultValue,
 		aggregator:   aggregator,
+		earlyStopper: earlyStopper,
 		errorHandler: errorHandler,
 		digester:     digester,
 	}
 }
 
 func NewDefaultSequentialJobWithDoable(name string, defaultValue interface{}, doables []Doable, aggregator Aggregator) SequentialJob {
-	return NewSequentialJobWithDoable(name, defaultValue, doables, aggregator, NewDefaultJobConfig(), NewDefaultErrorHandler(), NewDefaultDigester())
+	return NewSequentialJobWithDoable(name, defaultValue, doables, aggregator, DefaultEarlyStopper, NewDefaultJobConfig(), NewDefaultErrorHandler(), NewDefaultDigester())
 }
 
-func NewSequentialJobWithDoable(name string, defaultValue interface{}, doables []Doable, aggregator Aggregator, config JobConfig,
+func NewSequentialJobWithDoable(name string, defaultValue interface{}, doables []Doable, aggregator Aggregator, earlyStopper EarlyStopper, config JobConfig,
 	errorHandler ErrorHandler, digester Digester) SequentialJob {
 	var jobs []Job
 	for _, doable := range doables {
@@ -99,5 +107,5 @@ func NewSequentialJobWithDoable(name string, defaultValue interface{}, doables [
 			doable: doable,
 		})
 	}
-	return NewSequentialJob(name, defaultValue, jobs, aggregator, config, errorHandler, digester)
+	return NewSequentialJob(name, defaultValue, jobs, aggregator, earlyStopper, config, errorHandler, digester)
 }

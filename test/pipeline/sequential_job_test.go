@@ -85,9 +85,35 @@ var _ = ginkgo.Describe("Sequntial job tests", func() {
 						value: 4,
 					},
 				}
-				r := pipeline.NewSequentialJob("sum", 0, jobs, sumAggregator, pipeline.NewDefaultJobConfig().WithAllowError(false),
+				r := pipeline.NewSequentialJob("sum", 0, jobs, sumAggregator, pipeline.DefaultEarlyStopper, pipeline.NewDefaultJobConfig().WithAllowError(false),
 					pipeline.NewDefaultErrorHandler(), pipeline.NewDefaultDigester()).Do(context.Background())
 				gomega.Expect(r.Success).To(gomega.BeFalse())
+			})
+			ginkgo.It("Should be early stopped", func() {
+				jobs := []pipeline.Job{
+					SumJob{
+						value: 1,
+					},
+					SumJob{
+						value: 2,
+					},
+					SumJob{
+						value: 3,
+					},
+					SumJob{
+						value: 4,
+					},
+				}
+				r := pipeline.NewSequentialJob("sum", 0, jobs, sumAggregator, func(ctx context.Context, cur, aggr interface{}) bool {
+					if d, ok := cur.(int); ok {
+						if d == 3 {
+							return true
+						}
+					}
+					return false
+				}, pipeline.NewDefaultJobConfig(), pipeline.NewDefaultErrorHandler(), pipeline.NewDefaultDigester()).Do(context.Background())
+				gomega.Expect(r.Success).To(gomega.BeTrue())
+				gomega.Expect(r.Data).To(gomega.Equal(6))
 			})
 		})
 		ginkgo.When("Executing a sequential doable job", func() {

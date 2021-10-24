@@ -19,6 +19,19 @@ type Job interface {
 // @return The second value is a potential error
 type Aggregator func(ctx context.Context, prior, current interface{}) (interface{}, error)
 
+// EarlyStopper checks if a job meets an early stop point or not
+// It checks both the current child job result and the aggregated one
+//
+// @param ctx Execution context
+// @param cur Current child job result data
+// @param aggr Aggregated job result data
+// @return True if a job needs to stop, false otherwise
+type EarlyStopper func(ctx context.Context, cur, aggr interface{}) bool
+
+var DefaultEarlyStopper EarlyStopper = func(ctx context.Context, cur, aggr interface{}) bool {
+	return false
+}
+
 // Doable is a sysnonym to Job interface's Do function, which helps to construc jobs in a funcational way
 type Doable func(ctx context.Context) JobResult
 
